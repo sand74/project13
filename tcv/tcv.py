@@ -1,45 +1,12 @@
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
-from dataclasses import dataclass
 from collections import namedtuple
-import seaborn as sns
-from sklearn.decomposition import PCA
-
 
 from .utils import *
 
 Node = namedtuple('Node', ('name', 'inputs', 'attr', 'op'))
 SAVED_PREFIX = "_saved_"
-
-
-def get_weight(model: nn, path: str):
-    """Args:
-         model: neural network model.
-         path: path for extracting weights in format layer1.layer2. ... .layerN.
-       Returns:
-         Return weight matrix."""
-    layer = get_layer(model, path)
-    return layer.state_dict()['weight']
-
-
-def get_bias(model: nn, path: str):
-    """Args:
-         model: neural network model.
-         path: path for extracting bias in format layer1.layer2. ... .layerN.
-       Returns:
-         Return bias matrix"""
-    layer = get_layer(model, path)
-    return layer.state_dict()['bias']
-
-@dataclass
-class Node:
-    name: str
-    size: str
-    obj: torch.nn.Module
-
-    def __str__(self):
-        return self.name + self.size if self.size is not None else f"fn={self.name}"
 
 
 def build_graph(var, params=None, show_saved=False):
@@ -147,9 +114,25 @@ def build_graph(var, params=None, show_saved=False):
 
     return obj_by_id, edges
 
-def view_matrix(matrix):
-    pca = PCA(n_components=1, svd_solver='arpack')
-    np_matrix = matrix.detach().numpy()
-    one_dim = pca.fit_transform(np_matrix)
-    sns.set_theme(style="whitegrid")
-    return sns.histplot(one_dim, bins=100)
+
+def weight_matrix(model: nn, path: str):
+    """Args:
+         model: neural network model.
+         path: path for extracting weights in format layer1.layer2. ... .layerN.
+       Returns:
+         Return weight matrix."""
+    weight = get_weight(model, path)
+    return view_matrix(weight)
+
+def attention_matrix(model: nn, path: str):
+    #assert model.__name__ == "attention"
+    #return sns.heatmap(attention, xticklabels=tokens, yticklabels=tokens, cmap="viridis")
+    pass
+
+def sample_characteristic(model: nn, path: str):
+    """Args:
+         model: neural network model.
+         path: path for extracting characteristic in format layer1.layer2. ... .layerN.
+       Returns:
+         Return ????."""
+    pass
