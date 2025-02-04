@@ -11,10 +11,10 @@ def get_layer(model: nn, path: str):
     for part in parts:
         if part.isdigit():
             part = int(part)
-            assert(isinstance(layer, list), f"layer is not iterable")
-            assert(0 <= part < len(layer), f"Index {part} is out of range")
+            #assert isinstance(layer, list), f"Error: Layer is not iterable"
+            assert 0 <= part < len(layer), f"Error: Index {part} is out of range"
             layer = layer[part]
         else:
-            assert(hasattr(layer, part), "The wrong path was entered")
+            assert hasattr(layer, part), "Error: The wrong path was entered"
             layer = getattr(layer, part)
     return layer
