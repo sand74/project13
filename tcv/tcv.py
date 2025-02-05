@@ -1,8 +1,8 @@
 import torch
-import torch.nn as nn
 from torch.autograd import Variable
 from collections import namedtuple
 from transformers import AutoTokenizer
+import plotly.graph_objects as go
 
 from .utils import *
 
@@ -133,10 +133,10 @@ def weight_matrix(model: nn, path: str):
     """Args:
          model: neural network model.
          path: path for extracting weights in format layer1.layer2. ... .layerN.
-       Result:
-         Draws a weight matrix."""
+       Return:
+         Graphic of a weight matrix."""
     weight = get_weight(model, path)
-    view_matrix(weight)
+    return get_distribution(weight)
 
 def attention_matrix(model: nn, layer: int=0, text: str="Hello, how are you?", tokenizer=AutoTokenizer.from_pretrained("bert-base-uncased")):
     """Args:
@@ -144,8 +144,8 @@ def attention_matrix(model: nn, layer: int=0, text: str="Hello, how are you?", t
          layer: number of attention layer.
          text: input text for testing.
          tokenizer: current model tokenizer.
-       Result:
-         Draws an attention matrix."""
+       Return:
+         Graphic of an attention matrix."""
     inputs = tokenizer(text, return_tensors="pt")
     outputs = model(**inputs)
 
@@ -156,7 +156,27 @@ def attention_matrix(model: nn, layer: int=0, text: str="Hello, how are you?", t
 
     tokens = tokenizer.convert_ids_to_tokens(inputs["input_ids"][0])
 
-    sns.heatmap(attention, xticklabels=tokens, yticklabels=tokens, cmap="viridis")
+    return go.Figure(data=go.Heatmap(z=attention, x=tokens, y=tokens, colorscale='Viridis'))
+
+def attention_3d_matrix(model, layer: int=0, text: str="Hello, how are you?", tokenizer=AutoTokenizer.from_pretrained("bert-base-uncased")):
+    """Args:
+         model: neural network model.
+         layer: number of attention layer.
+         text: input text for testing.
+         tokenizer: current model tokenizer.
+       Return:
+         3D graphic of an attention matrix."""
+    inputs = tokenizer(text, return_tensors="pt")
+    outputs = model(**inputs)
+
+    attentions = torch.stack(outputs.attentions)
+
+    # averaging by heads
+    attention = attentions[layer][0].mean(axis=0).detach().numpy()
+
+    tokens = tokenizer.convert_ids_to_tokens(inputs["input_ids"][0])
+
+    return go.Figure(data=[go.Surface(z=attention, x=tokens, y=tokens)])
 
 # def sample_characteristic(model: nn, path: str):
 #     """Args:

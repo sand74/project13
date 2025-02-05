@@ -2,6 +2,7 @@ import torch.nn as nn
 from dataclasses import dataclass
 import seaborn as sns
 from sklearn.decomposition import PCA
+import plotly.express as px
 
 
 def get_weight(model: nn, path: str):
@@ -44,9 +45,20 @@ def get_layer(model: nn, path: str):
     return layer
 
 
-def view_matrix(matrix, bins=100):
+def get_distribution(matrix, bins=100):
+    """Args:
+         matrix: matrix for representing distribution.
+         bins: the number of marks on the graphic.
+       Returns:
+         Return distribution graphic"""
     pca = PCA(n_components=1, svd_solver='arpack')
     np_matrix = matrix.detach().numpy()
-    one_dim = pca.fit_transform(np_matrix)
-    sns.set_theme(style="whitegrid")
-    return sns.histplot(one_dim, bins=bins)
+    one_dim = pca.fit_transform(np_matrix).flatten()
+    return px.histogram(x=one_dim, nbins=bins, title="Distribution of Matrix Values",
+                       labels={'x': 'PCA Projection', 'y': 'Frequency'},
+                       template="plotly_white")
+    # pca = PCA(n_components=1, svd_solver='arpack')
+    # np_matrix = matrix.detach().numpy()
+    # one_dim = pca.fit_transform(np_matrix)
+    # sns.set_theme(style="whitegrid")
+    # return sns.histplot(one_dim, bins=bins)

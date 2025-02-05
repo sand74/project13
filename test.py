@@ -1,11 +1,8 @@
-from matplotlib.font_manager import weight_dict
-
 from tcv import tcv
 
 import torch
 import torch.nn as nn
 import numpy as np
-import matplotlib.pyplot as plt
 
 
 class Encoder(nn.Module):
@@ -31,8 +28,8 @@ x = np.random.normal(1, size=1000)
 t = torch.tensor(x, dtype=torch.float32).reshape(1, 1000)
 out = enc(t)
 
-for k,v in tcv.build_graph(out[0], params=dict(enc.named_parameters()))[0].items():
-    print(v)
+# for k,v in tcv.build_graph(out[0], params=dict(enc.named_parameters()))[0].items():
+#     print(v)
 
-tcv.weight_matrix(enc, '_input.2')
-plt.savefig("w_example.png")
+fig = tcv.weight_matrix(enc, '_input.0')
+fig.show()
