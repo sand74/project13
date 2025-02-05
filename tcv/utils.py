@@ -44,16 +44,6 @@ def get_layer(model: nn, path: str):
     return layer
 
 
-@dataclass
-class Node:
-    name: str
-    size: str
-    obj: nn.Module
-
-    def __str__(self):
-        return self.name + self.size if self.size is not None else f"fn={self.name}"
-
-
 def view_matrix(matrix, bins=100):
     pca = PCA(n_components=1, svd_solver='arpack')
     np_matrix = matrix.detach().numpy()

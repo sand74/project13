@@ -2,12 +2,21 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 from collections import namedtuple
+from transformers import BertModel, AutoTokenizer
 
 from .utils import *
 
 Node = namedtuple('Node', ('name', 'inputs', 'attr', 'op'))
 SAVED_PREFIX = "_saved_"
 
+@dataclass
+class Node:
+    name: str
+    size: str
+    obj: nn.Module
+
+    def __str__(self):
+        return self.name + self.size if self.size is not None else f"fn={self.name}"
 
 def build_graph(var, params=None, show_saved=False):
     assert var is not None, "Error: The 'var' variable should not be None"
@@ -114,7 +123,6 @@ def build_graph(var, params=None, show_saved=False):
 
     return obj_by_id, edges
 
-
 def weight_matrix(model: nn, path: str):
     """Args:
          model: neural network model.
@@ -124,10 +132,18 @@ def weight_matrix(model: nn, path: str):
     weight = get_weight(model, path)
     return view_matrix(weight)
 
-def attention_matrix(model: nn, path: str):
-    #assert model.__name__ == "attention"
-    #return sns.heatmap(attention, xticklabels=tokens, yticklabels=tokens, cmap="viridis")
-    pass
+def attention_matrix(model: nn, text: str="Hello, how are you?", tokenizer=AutoTokenizer.from_pretrained("bert-base-uncased")):
+  inputs = tokenizer(text, return_tensors="pt")
+  outputs = model(**inputs)
+  attentions = outputs.attentions
+
+  layer = 0
+
+  attention = attentions[layer][0].mean(axis=0).detach().numpy()
+
+  tokens = tokenizer.convert_ids_to_tokens(inputs["input_ids"][0])
+
+  return sns.heatmap(attention, xticklabels=tokens, yticklabels=tokens, cmap="viridis")
 
 def sample_characteristic(model: nn, path: str):
     """Args:

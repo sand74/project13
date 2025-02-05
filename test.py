@@ -34,6 +34,5 @@ out = enc(t)
 for k,v in tcv.build_graph(out[0], params=dict(enc.named_parameters()))[0].items():
     print(v)
 
-weights = tcv.get_weight(enc, '_input.2')
-g = tcv.view_matrix(weights)
+g = tcv.weight_matrix(enc, '_input.2')
 plt.savefig("w_example.png")
