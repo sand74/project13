@@ -132,18 +132,18 @@ def weight_matrix(model: nn, path: str):
     weight = get_weight(model, path)
     return view_matrix(weight)
 
-def attention_matrix(model: nn, text: str="Hello, how are you?", tokenizer=AutoTokenizer.from_pretrained("bert-base-uncased")):
-  inputs = tokenizer(text, return_tensors="pt")
-  outputs = model(**inputs)
-  attentions = outputs.attentions
+def attention_matrix(model: nn, layer: int=0, text: str="Hello, how are you?", tokenizer=AutoTokenizer.from_pretrained("bert-base-uncased")):
+    inputs = tokenizer(text, return_tensors="pt")
+    outputs = model(**inputs)
 
-  layer = 0
+    attentions = torch.stack(outputs.attentions)
 
-  attention = attentions[layer][0].mean(axis=0).detach().numpy()
+    # averaging by heads
+    attention = attentions[layer][0].mean(axis=0).detach().numpy()
 
-  tokens = tokenizer.convert_ids_to_tokens(inputs["input_ids"][0])
+    tokens = tokenizer.convert_ids_to_tokens(inputs["input_ids"][0])
 
-  return sns.heatmap(attention, xticklabels=tokens, yticklabels=tokens, cmap="viridis")
+    return sns.heatmap(attention, xticklabels=tokens, yticklabels=tokens, cmap="viridis")
 
 def sample_characteristic(model: nn, path: str):
     """Args:
