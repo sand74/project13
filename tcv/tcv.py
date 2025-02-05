@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 from collections import namedtuple
-from transformers import BertModel, AutoTokenizer
+from transformers import AutoTokenizer
 
 from .utils import *
 
@@ -11,6 +11,7 @@ SAVED_PREFIX = "_saved_"
 
 @dataclass
 class Node:
+    """Dataclass for representing node structure"""
     name: str
     size: str
     obj: nn.Module
@@ -18,9 +19,15 @@ class Node:
     def __str__(self):
         return self.name + self.size if self.size is not None else f"fn={self.name}"
 
-def build_graph(var, params=None, show_saved=False):
+def build_graph(var: torch.Tensor, params: dict | None=None, show_saved: bool | None=False):
+    """Args:
+         var: tensor for building graph.
+         params: dict of initial parameters.
+         show_saved: showing saved flag.
+       Returns:
+         Return model structure graph."""
     assert var is not None, "Error: The 'var' variable should not be None"
-    assert isinstance(var, torch.Tensor)
+    assert isinstance(var, torch.Tensor), "Error: The 'var' variable should be torch.Tensor"
     assert isinstance(params, dict | None), "Error: The 'params' variable should be dict"
     assert isinstance(show_saved, bool | None), "Error: The 'show_saved' variable should be bool"
 
@@ -48,7 +55,6 @@ def build_graph(var, params=None, show_saved=False):
         return name
 
     def add_nodes(fn):
-
         assert not torch.is_tensor(fn)
         if fn in seen:
             return
@@ -127,12 +133,19 @@ def weight_matrix(model: nn, path: str):
     """Args:
          model: neural network model.
          path: path for extracting weights in format layer1.layer2. ... .layerN.
-       Returns:
-         Return weight matrix."""
+       Result:
+         Draws a weight matrix."""
     weight = get_weight(model, path)
-    return view_matrix(weight)
+    view_matrix(weight)
 
 def attention_matrix(model: nn, layer: int=0, text: str="Hello, how are you?", tokenizer=AutoTokenizer.from_pretrained("bert-base-uncased")):
+    """Args:
+         model: neural network model.
+         layer: number of attention layer.
+         text: input text for testing.
+         tokenizer: current model tokenizer.
+       Result:
+         Draws an attention matrix."""
     inputs = tokenizer(text, return_tensors="pt")
     outputs = model(**inputs)
 
@@ -143,12 +156,12 @@ def attention_matrix(model: nn, layer: int=0, text: str="Hello, how are you?", t
 
     tokens = tokenizer.convert_ids_to_tokens(inputs["input_ids"][0])
 
-    return sns.heatmap(attention, xticklabels=tokens, yticklabels=tokens, cmap="viridis")
+    sns.heatmap(attention, xticklabels=tokens, yticklabels=tokens, cmap="viridis")
 
-def sample_characteristic(model: nn, path: str):
-    """Args:
-         model: neural network model.
-         path: path for extracting characteristic in format layer1.layer2. ... .layerN.
-       Returns:
-         Return ????."""
-    pass
+# def sample_characteristic(model: nn, path: str):
+#     """Args:
+#          model: neural network model.
+#          path: path for extracting characteristic in format layer1.layer2. ... .layerN.
+#        Returns:
+#          Return ????."""
+#     pass
