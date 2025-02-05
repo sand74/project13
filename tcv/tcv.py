@@ -138,15 +138,15 @@ def weight_matrix(model: nn, path: str):
     weight = get_weight(model, path)
     return get_distribution(weight)
 
-def attention_matrix(model: nn, layer: int=0, text: str="Hello, how are you?", tokenizer=AutoTokenizer.from_pretrained("bert-base-uncased")):
+def attention_matrix(model: nn, layer: int=0, input: str="Hello, how are you?", tokenizer=AutoTokenizer.from_pretrained("bert-base-uncased")):
     """Args:
          model: neural network model.
          layer: number of attention layer.
-         text: input text for testing.
+         input: input text for testing.
          tokenizer: current model tokenizer.
        Return:
          Graphic of an attention matrix."""
-    inputs = tokenizer(text, return_tensors="pt")
+    inputs = tokenizer(input, return_tensors="pt")
     outputs = model(**inputs)
 
     attentions = torch.stack(outputs.attentions)
@@ -158,15 +158,15 @@ def attention_matrix(model: nn, layer: int=0, text: str="Hello, how are you?", t
 
     return go.Figure(data=go.Heatmap(z=attention, x=tokens, y=tokens, colorscale='Viridis'))
 
-def attention_3d_matrix(model, layer: int=0, text: str="Hello, how are you?", tokenizer=AutoTokenizer.from_pretrained("bert-base-uncased")):
+def attention_3d_matrix(model, layer: int=0, input: str="Hello, how are you?", tokenizer=AutoTokenizer.from_pretrained("bert-base-uncased")):
     """Args:
          model: neural network model.
          layer: number of attention layer.
-         text: input text for testing.
+         input: input text for testing.
          tokenizer: current model tokenizer.
        Return:
          3D graphic of an attention matrix."""
-    inputs = tokenizer(text, return_tensors="pt")
+    inputs = tokenizer(input, return_tensors="pt")
     outputs = model(**inputs)
 
     attentions = torch.stack(outputs.attentions)
