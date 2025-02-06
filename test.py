@@ -31,5 +31,5 @@ out = enc(t)
 # for k,v in tcv.build_graph(out[0], params=dict(enc.named_parameters()))[0].items():
 #     print(v)
 
-fig = tcv.weight_matrix(enc, '_input.0')
+fig = tcv.show_layer(enc, '_input.0')
 fig.show()

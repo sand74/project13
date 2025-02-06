@@ -3,6 +3,8 @@ from dataclasses import dataclass
 import seaborn as sns
 from sklearn.decomposition import PCA
 import plotly.express as px
+from sklearn.cluster import KMeans
+import numpy as np
 
 
 def get_weight(model: nn, path: str):
@@ -14,7 +16,6 @@ def get_weight(model: nn, path: str):
     layer = get_layer(model, path)
     return layer.state_dict()['weight']
 
-
 def get_bias(model: nn, path: str):
     """Args:
          model: neural network model.
@@ -23,7 +24,6 @@ def get_bias(model: nn, path: str):
          Return bias matrix"""
     layer = get_layer(model, path)
     return layer.state_dict()['bias']
-
 
 def get_layer(model: nn, path: str):
     """Args:
@@ -44,8 +44,7 @@ def get_layer(model: nn, path: str):
             layer = getattr(layer, part)
     return layer
 
-
-def get_distribution(matrix, bins=100):
+def show_tensor(matrix, bins=100):
     """Args:
          matrix: matrix for representing distribution.
          bins: the number of marks on the graphic.
@@ -62,3 +61,12 @@ def get_distribution(matrix, bins=100):
     # one_dim = pca.fit_transform(np_matrix)
     # sns.set_theme(style="whitegrid")
     # return sns.histplot(one_dim, bins=bins)
+
+def auto_cluster(x):
+    num_clusters = max(2, int(np.sqrt(len(x))))
+    kmeans = KMeans(n_clusters=num_clusters)
+    return kmeans.fit_predict(x)
+
+def get_pca(x):
+    pca = PCA(n_components=2)
+    return pca.fit_transform(x)

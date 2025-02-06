@@ -4,6 +4,19 @@ from collections import namedtuple
 from transformers import AutoTokenizer
 import plotly.graph_objects as go
 
+import networkx as nx
+import plotly.graph_objects as go
+from dash import Dash, dcc, html, Output, Input
+
+import plotly.express as px
+from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
+
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
+
+import numpy as np
+
 from .utils import *
 
 Node = namedtuple('Node', ('name', 'inputs', 'attr', 'op'))
@@ -27,7 +40,7 @@ def build_graph(var: torch.Tensor, params: dict | None=None, show_saved: bool | 
        Returns:
          Return model structure graph."""
     assert var is not None, "Error: The 'var' variable should not be None"
-    assert isinstance(var, torch.Tensor), "Error: The 'var' variable should be torch.Tensor"
+    # assert isinstance(var, torch.Tensor), "Error: The 'var' variable should be torch.Tensor"
     assert isinstance(params, dict | None), "Error: The 'params' variable should be dict"
     assert isinstance(show_saved, bool | None), "Error: The 'show_saved' variable should be bool"
 
@@ -129,16 +142,16 @@ def build_graph(var: torch.Tensor, params: dict | None=None, show_saved: bool | 
 
     return obj_by_id, edges
 
-def weight_matrix(model: nn, path: str):
+def show_layer(model: nn, path: str):
     """Args:
          model: neural network model.
          path: path for extracting weights in format layer1.layer2. ... .layerN.
        Return:
          Graphic of a weight matrix."""
     weight = get_weight(model, path)
-    return get_distribution(weight)
+    return show_tensor(weight)
 
-def attention_matrix(model: nn, layer: int=0, input: str="Hello, how are you?", tokenizer=AutoTokenizer.from_pretrained("bert-base-uncased")):
+def show_output(model: nn, layer: int=0, input: str="Hello, how are you?", tokenizer=AutoTokenizer.from_pretrained("bert-base-uncased")):
     """Args:
          model: neural network model.
          layer: number of attention layer.
@@ -158,7 +171,7 @@ def attention_matrix(model: nn, layer: int=0, input: str="Hello, how are you?", 
 
     return go.Figure(data=go.Heatmap(z=attention, x=tokens, y=tokens, colorscale='Viridis'))
 
-def attention_3d_matrix(model, layer: int=0, input: str="Hello, how are you?", tokenizer=AutoTokenizer.from_pretrained("bert-base-uncased")):
+def show_3d_output(model, layer: int=0, input: str="Hello, how are you?", tokenizer=AutoTokenizer.from_pretrained("bert-base-uncased")):
     """Args:
          model: neural network model.
          layer: number of attention layer.
@@ -178,21 +191,32 @@ def attention_3d_matrix(model, layer: int=0, input: str="Hello, how are you?", t
 
     return go.Figure(data=[go.Surface(z=attention, x=tokens, y=tokens)])
 
-# def sample_characteristic(model: nn, path: str):
-#     """Args:
-#          model: neural network model.
-#          path: path for extracting characteristic in format layer1.layer2. ... .layerN.
-#        Returns:
-#          Return ????."""
-#     pass
+def get_layer_output(model, layer, input):
+    activations = {}
 
-def plot_graph(mapa: dict, edges: list[tuple[str]]):
+    def hook_fn(module, input0, output0):
+        activations["output"] = output0
+
+    get_layer(model, layer).register_forward_hook(hook_fn)
+
+    output = model(input)
+    return activations.get("output", None)
+
+def get_embeddings(model, layer, input, labels=None):
+    embeddings = get_layer_output(model, layer, input)
+    embeddings = embeddings.detach().numpy()
+    embeddings_pca = get_pca(embeddings)
+
+    if labels is None:
+        labels = auto_cluster(embeddings_pca)
+
+    return px.scatter(x=embeddings_pca[:, 0], y=embeddings_pca[:, 1], title="Embeddings visualization", color=labels)
+
+def show_graph(mapa: dict, edges: list[tuple[str]]):
     """
     graph structure plot
     """
-    import networkx as nx
-    import plotly.graph_objects as go
-    from dash import Dash, dcc, html, Output, Input
+
     names = {}
     for i in mapa:
         names[i] = mapa[i].name
@@ -218,19 +242,19 @@ def plot_graph(mapa: dict, edges: list[tuple[str]]):
             if neighbor not in seen_nodes:
                 seen_nodes.add(neighbor)
                 queue.append((neighbor, level + 1))
-                if level+1 in levels:
-                    levels[level+1].append(neighbor)
+                if level + 1 in levels:
+                    levels[level + 1].append(neighbor)
                 else:
-                    levels[level+1] = [neighbor]
+                    levels[level + 1] = [neighbor]
     pos = {}
     for level in levels.keys():
         for (bias, node) in enumerate(levels[level]):
             pos[node] = (0.3 * bias, -5 * level)
-    
+
     # Функция для отрисовки DAG
     def create_dag_figure(selected_node=None):
         fig = go.Figure()
-    
+
         # Добавляем рёбра
         for start, end in G.edges():
             x0, y0 = pos[start]
@@ -255,12 +279,14 @@ def plot_graph(mapa: dict, edges: list[tuple[str]]):
             text_width = len(node) * 0.12
             rect_x0, rect_x1 = x - text_width, x + text_width
             rect_y0, rect_y1 = y - 0.5, y + 0.5
-    
-            shapes.append(dict(type="rect", x0=rect_x0, x1=rect_x1, y0=rect_y0, y1=rect_y1, line=dict(color="black"), fillcolor="lightblue"))
-            annotations.append(dict(x=x, y=y, text=node, showarrow=False, font=dict(size=14), xanchor="center", yanchor="middle"))
-            
+
+            shapes.append(dict(type="rect", x0=rect_x0, x1=rect_x1, y0=rect_y0, y1=rect_y1, line=dict(color="black"),
+                               fillcolor="lightblue"))
+            annotations.append(
+                dict(x=x, y=y, text=node, showarrow=False, font=dict(size=14), xanchor="center", yanchor="middle"))
+
             node_labels.append(node)
-    
+
         fig.update_layout(title="",
                           xaxis=dict(showgrid=False, zeroline=False, visible=False, range=[-1, max(levels.keys()) + 1]),
                           yaxis=dict(showgrid=False, zeroline=False, visible=False, range=[-len(G.nodes), 1]),
@@ -278,10 +304,9 @@ def plot_graph(mapa: dict, edges: list[tuple[str]]):
             marker_symbol="square",
             showlegend=False
         ))
-    
-        
+
         return fig
-    
+
     def create_right_figure(selected_node=None):
         fig = go.Figure()
         if selected_node:
@@ -289,10 +314,12 @@ def plot_graph(mapa: dict, edges: list[tuple[str]]):
                 x=[0], y=[0], text=[mapa[selected_node]], mode="text",
                 textfont=dict(size=15, color="black")
             ))
-    
-        fig.update_layout(title="Выбранная вершина", xaxis=dict(visible=False), yaxis=dict(visible=False), plot_bgcolor='white')
-    
+
+        fig.update_layout(title="Выбранная вершина", xaxis=dict(visible=False), yaxis=dict(visible=False),
+                          plot_bgcolor='white')
+
         return fig
+
     app.layout = html.Div([
         html.Div([
             dcc.Graph(id="dag-graph", figure=create_dag_figure(), style={"height": "90vh"})
@@ -301,7 +328,7 @@ def plot_graph(mapa: dict, edges: list[tuple[str]]):
             dcc.Graph(id="right-graph", figure=create_right_figure(), style={"height": "90vh"})
         ], style={"width": "40%", "display": "inline-block", "verticalAlign": "top"})
     ])
-    
+
     @app.callback(
         Output("right-graph", "figure"),
         Input("dag-graph", "clickData")
@@ -312,4 +339,5 @@ def plot_graph(mapa: dict, edges: list[tuple[str]]):
             selected_node = clickData["points"][0]["customdata"]
             return create_right_figure(selected_node)
         return create_right_figure()
+
     app.run_server(debug=False)
