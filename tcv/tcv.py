@@ -216,7 +216,6 @@ def show_graph(mapa: dict, edges: list[tuple[str]]):
     """
     graph structure plot
     """
-
     names = {}
     for i in mapa:
         names[i] = mapa[i].name
