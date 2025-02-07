@@ -216,6 +216,7 @@ def show_graph(mapa: dict, edges: list[tuple[str]]):
     """
     graph structure plot
     """
+
     names = {}
     for i in mapa:
         names[i] = mapa[i].name
@@ -248,7 +249,7 @@ def show_graph(mapa: dict, edges: list[tuple[str]]):
     pos = {}
     for level in levels.keys():
         for (bias, node) in enumerate(levels[level]):
-            pos[node] = (0.3 * bias, -5 * level)
+            pos[node] = (1 * bias, -2 * level)
 
     # Функция для отрисовки DAG
     def create_dag_figure(selected_node=None):
@@ -296,13 +297,14 @@ def show_graph(mapa: dict, edges: list[tuple[str]]):
             y=[y for x, y in pos.values()],
             mode="markers+text",
             marker=dict(size=40, color="lightblue"),
-            text=[names[node].replace("Backward", "") for node in pos.keys()],
+            text=[names[node].replace("Backward", "")[:6] for node in pos.keys()],
             textposition="middle center",
             customdata=node_labels,
             hoverinfo="text",
             marker_symbol="square",
             showlegend=False
         ))
+        fig.update_layout(xaxis=dict(autorange=True), yaxis=dict(autorange=True))
 
         return fig
 
@@ -322,10 +324,10 @@ def show_graph(mapa: dict, edges: list[tuple[str]]):
     app.layout = html.Div([
         html.Div([
             dcc.Graph(id="dag-graph", figure=create_dag_figure(), style={"height": "90vh"})
-        ], style={"width": "60%", "display": "inline-block", "verticalAlign": "top"}),
+        ], style={"width": "100%", "display": "inline-block", "verticalAlign": "top"}),
         html.Div([
             dcc.Graph(id="right-graph", figure=create_right_figure(), style={"height": "90vh"})
-        ], style={"width": "40%", "display": "inline-block", "verticalAlign": "top"})
+        ], style={"width": "0%", "display": "inline-block", "verticalAlign": "top"})
     ])
 
     @app.callback(
@@ -340,3 +342,77 @@ def show_graph(mapa: dict, edges: list[tuple[str]]):
         return create_right_figure()
 
     app.run_server(debug=False)
+
+def distill_graph(dct_, borders):
+
+    def contains_substring(main_string, substrings):
+        for substring in substrings:
+            if substring in main_string:
+                return True
+        return False
+
+    def is_bad(id):
+        return contains_substring(dct[id].name.lower(), ['grad', 'tback'])
+
+    def is_bad2(id):
+        return contains_substring(dct[id].name, ['AddmmBackward0'])
+
+    graph = dict()
+    inv_graph = dict()
+    dct = dct_.copy()
+
+    for key, val in dct.items():
+        graph[key] = set()
+        inv_graph[key] = set()
+
+    for a, b in borders:
+        graph[a].add(b)
+        inv_graph[b].add(a)
+
+    def delete_v(vertex):
+        #print("del", dct[vertex].name)
+        children = graph[vertex]
+        parents = inv_graph[vertex]
+
+        for parent in parents:
+            graph[parent].update(children)
+            graph[parent].remove(vertex)
+
+        for child in children:
+            inv_graph[child].update(parents)
+            inv_graph[child].remove(vertex)
+
+        del graph[vertex]
+        del inv_graph[vertex]
+        del dct[vertex]
+
+    for vertex, node in dct_.items():
+        if is_bad(vertex):
+            delete_v(vertex)
+
+    for vertex, node in dct_.items():
+        if (node.name.endswith(".weight")):
+            base = node.name[:-7]
+            #print(base)
+            parents_saved = graph[vertex]
+            for parent in parents_saved:
+                #print(parent)
+                dct[parent].name = base
+                childs_saved = inv_graph[parent].copy()
+                for child in childs_saved:
+                    #print("child", dct[child].name)
+                    if base in dct[child].name:
+                        delete_v(child)
+
+    keys = list(dct.keys()).copy()
+    for vertex in keys:
+        if is_bad2(vertex):
+            delete_v(vertex)
+
+
+    new_borders = []
+    for vertex, childs in graph.items():
+        for child in childs:
+            new_borders.append((vertex, child))
+
+    return dct, new_borders
