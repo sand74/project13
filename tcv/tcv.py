@@ -151,10 +151,10 @@ def show_layer(model: nn, path: str):
     weight = get_weight(model, path)
     return show_tensor(weight)
 
-def show_output(model: nn, layer: int=0, input: str="Hello, how are you?", tokenizer=AutoTokenizer.from_pretrained("bert-base-uncased")):
+def show_output(model: nn, attention_layer_num: int=0, input: str="Hello, how are you?", tokenizer=AutoTokenizer.from_pretrained("bert-base-uncased")):
     """Args:
          model: neural network model.
-         layer: number of attention layer.
+         attention_layer_num: number of attention layer.
          input: input text for testing.
          tokenizer: current model tokenizer.
        Return:
@@ -162,19 +162,40 @@ def show_output(model: nn, layer: int=0, input: str="Hello, how are you?", token
     inputs = tokenizer(input, return_tensors="pt")
     outputs = model(**inputs)
 
+
     attentions = torch.stack(outputs.attentions)
 
     # averaging by heads
-    attention = attentions[layer][0].mean(axis=0).detach().numpy()
+    attention = attentions[attention_layer_num][0].mean(axis=0).detach().numpy()
 
     tokens = tokenizer.convert_ids_to_tokens(inputs["input_ids"][0])
 
     return go.Figure(data=go.Heatmap(z=attention, x=tokens, y=tokens, colorscale='Viridis'))
 
-def show_3d_output(model, layer: int=0, input: str="Hello, how are you?", tokenizer=AutoTokenizer.from_pretrained("bert-base-uncased")):
+def show_output_(model: nn, layer: str, attention_layer_num: int=0, input: str="Hello, how are you?", tokenizer=AutoTokenizer.from_pretrained("bert-base-uncased")):
     """Args:
          model: neural network model.
-         layer: number of attention layer.
+         layer: layer with attention.
+         attention_layer_num: number of attention layer.
+         input: input text for testing.
+         tokenizer: current model tokenizer.
+       Return:
+         Graphic of an attention matrix."""
+    inputs = tokenizer(input, return_tensors="pt")
+
+    attentions = torch.stack(get_layer_output(model, layer, input))
+
+    # averaging by heads
+    attention = attentions[attention_layer_num][0].mean(axis=0).detach().numpy()
+
+    tokens = tokenizer.convert_ids_to_tokens(inputs["input_ids"][0])
+
+    return go.Figure(data=go.Heatmap(z=attention, x=tokens, y=tokens, colorscale='Viridis'))
+
+def show_3d_output(model, attention_layer_num: int=0, input: str="Hello, how are you?", tokenizer=AutoTokenizer.from_pretrained("bert-base-uncased")):
+    """Args:
+         model: neural network model.
+         attention_layer_num: number of attention layer.
          input: input text for testing.
          tokenizer: current model tokenizer.
        Return:
@@ -185,7 +206,7 @@ def show_3d_output(model, layer: int=0, input: str="Hello, how are you?", tokeni
     attentions = torch.stack(outputs.attentions)
 
     # averaging by heads
-    attention = attentions[layer][0].mean(axis=0).detach().numpy()
+    attention = attentions[attention_layer_num][0].mean(axis=0).detach().numpy()
 
     tokens = tokenizer.convert_ids_to_tokens(inputs["input_ids"][0])
 
