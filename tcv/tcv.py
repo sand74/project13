@@ -172,7 +172,7 @@ def show_output(model: nn, layer: str, attention_layer_num: int=0, input: str="H
 
     return go.Figure(data=go.Heatmap(z=attention, x=tokens, y=tokens, colorscale='Viridis'))
 
-def show_3d_output(model, attention_layer_num: int=0, input: str="Hello, how are you?", tokenizer=AutoTokenizer.from_pretrained("bert-base-uncased")):
+def show_3d_output(model: nn, layer: str, attention_layer_num: int=0, input: str="Hello, how are you?", tokenizer=AutoTokenizer.from_pretrained("bert-base-uncased")):
     """Args:
          model: neural network model.
          attention_layer_num: number of attention layer.
