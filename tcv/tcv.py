@@ -3,13 +3,11 @@ from torch.autograd import Variable
 from collections import namedtuple
 from transformers import AutoTokenizer
 import transformers
-import plotly.graph_objects as go
 
 import networkx as nx
 import plotly.graph_objects as go
 from dash import Dash, dcc, html, Output, Input
 
-import plotly.express as px
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 

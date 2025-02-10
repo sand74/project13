@@ -2,9 +2,9 @@ import torch.nn as nn
 from dataclasses import dataclass
 import seaborn as sns
 from sklearn.decomposition import PCA
-import plotly.express as px
 from sklearn.cluster import KMeans
 import numpy as np
+import plotly.graph_objects as go
 
 
 def get_weight(model: nn, path: str):
@@ -53,14 +53,17 @@ def show_tensor(matrix, bins=100):
     pca = PCA(n_components=1, svd_solver='arpack')
     np_matrix = matrix.detach().numpy()
     one_dim = pca.fit_transform(np_matrix).flatten()
-    return px.histogram(x=one_dim, nbins=bins, title="Distribution of Matrix Values",
-                       labels={'x': 'PCA Projection', 'y': 'Frequency'},
-                       template="plotly_white")
-    # pca = PCA(n_components=1, svd_solver='arpack')
-    # np_matrix = matrix.detach().numpy()
-    # one_dim = pca.fit_transform(np_matrix)
-    # sns.set_theme(style="whitegrid")
-    # return sns.histplot(one_dim, bins=bins)
+
+    fig = go.Figure(data=[go.Histogram(x=one_dim, nbinsx=bins)])
+
+    fig.update_layout(
+        title="Distribution of Matrix Values",
+        xaxis_title="PCA Projection",
+        yaxis_title="Frequency",
+        template="plotly_white"
+    )
+
+    return fig
 
 def auto_cluster(x):
     num_clusters = max(2, int(np.sqrt(len(x))))
