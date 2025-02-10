@@ -212,9 +212,11 @@ def get_embeddings(model, layer, input, labels=None):
     if labels is None:
         labels = auto_cluster(embeddings_pca)
 
-    return px.scatter(x=embeddings_pca[:, 0], y=embeddings_pca[:, 1], title="Embeddings visualization", color=labels)
+    fig = go.Figure(data=[go.Scatter(x=embeddings_pca[:, 0], y=embeddings_pca[:, 1], mode='markers', marker=dict(color=labels))])
+    fig.update_layout(title="Embeddings Visualization", xaxis_title="PCA Component 1", yaxis_title="PCA Component 2")
+    return fig
 
-def show_graph(mapa: dict, edges: list[tuple[str]]):
+def show_graph(mapa: dict, edges: list[tuple[str]], minimize_text=True):
     """
     graph structure plot
     """
@@ -251,7 +253,7 @@ def show_graph(mapa: dict, edges: list[tuple[str]]):
     pos = {}
     for level in levels.keys():
         for (bias, node) in enumerate(levels[level]):
-            pos[node] = (1 * bias, -2 * level)
+            pos[node] = (1 * bias, -100 * level)
 
     # Функция для отрисовки DAG
     def create_dag_figure(selected_node=None):
@@ -294,12 +296,15 @@ def show_graph(mapa: dict, edges: list[tuple[str]]):
                           yaxis=dict(showgrid=False, zeroline=False, visible=False, range=[-len(G.nodes), 1]),
                           margin=dict(l=0, r=0, t=0, b=0),
                           plot_bgcolor='white', clickmode="event")
+        text = [names[node] for node in pos.keys()]
+        if minimize_text:
+            text = [i[:6] for i in text]
         fig.add_trace(go.Scatter(
             x=[x for x, y in pos.values()],
             y=[y for x, y in pos.values()],
             mode="markers+text",
             marker=dict(size=40, color="lightblue"),
-            text=[names[node].replace("Backward", "")[:6] for node in pos.keys()],
+            text=text,
             textposition="middle center",
             customdata=node_labels,
             hoverinfo="text",
@@ -345,7 +350,7 @@ def show_graph(mapa: dict, edges: list[tuple[str]]):
 
     app.run_server(debug=False)
 
-def distill_graph(dct_, borders):
+def distill_graph(dct_, borders, remove_back=False):
 
     def contains_substring(main_string, substrings):
         for substring in substrings:
@@ -356,8 +361,12 @@ def distill_graph(dct_, borders):
     def is_bad(id):
         return contains_substring(dct[id].name.lower(), ['grad', 'tback'])
 
-    def is_bad2(id):
-        return contains_substring(dct[id].name, ['AddmmBackward0'])
+    if not remove_back:
+        def is_bad2(id):
+            return contains_substring(dct[id].name, ['AddmmBackward0'])
+    else:
+        def is_bad2(id):
+            return contains_substring(dct[id].name, ['Backward'])
 
     graph = dict()
     inv_graph = dict()
@@ -418,3 +427,4 @@ def distill_graph(dct_, borders):
             new_borders.append((vertex, child))
 
     return dct, new_borders
+
