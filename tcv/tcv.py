@@ -2,6 +2,7 @@ import torch
 from torch.autograd import Variable
 from collections import namedtuple
 from transformers import AutoTokenizer
+import transformers
 import plotly.graph_objects as go
 
 import networkx as nx
@@ -151,28 +152,7 @@ def show_layer(model: nn, path: str):
     weight = get_weight(model, path)
     return show_tensor(weight)
 
-def show_output(model: nn, attention_layer_num: int=0, input: str="Hello, how are you?", tokenizer=AutoTokenizer.from_pretrained("bert-base-uncased")):
-    """Args:
-         model: neural network model.
-         attention_layer_num: number of attention layer.
-         input: input text for testing.
-         tokenizer: current model tokenizer.
-       Return:
-         Graphic of an attention matrix."""
-    inputs = tokenizer(input, return_tensors="pt")
-    outputs = model(**inputs)
-
-
-    attentions = torch.stack(outputs.attentions)
-
-    # averaging by heads
-    attention = attentions[attention_layer_num][0].mean(axis=0).detach().numpy()
-
-    tokens = tokenizer.convert_ids_to_tokens(inputs["input_ids"][0])
-
-    return go.Figure(data=go.Heatmap(z=attention, x=tokens, y=tokens, colorscale='Viridis'))
-
-def show_output_(model: nn, layer: str, attention_layer_num: int=0, input: str="Hello, how are you?", tokenizer=AutoTokenizer.from_pretrained("bert-base-uncased")):
+def show_output(model: nn, layer: str, attention_layer_num: int=0, input: str="Hello, how are you?", tokenizer=AutoTokenizer.from_pretrained("bert-base-uncased")):
     """Args:
          model: neural network model.
          layer: layer with attention.
@@ -183,7 +163,7 @@ def show_output_(model: nn, layer: str, attention_layer_num: int=0, input: str="
          Graphic of an attention matrix."""
     inputs = tokenizer(input, return_tensors="pt")
 
-    attentions = torch.stack(get_layer_output(model, layer, input))
+    attentions = torch.stack([get_layer_output(model, layer, inputs)])
 
     # averaging by heads
     attention = attentions[attention_layer_num][0].mean(axis=0).detach().numpy()
@@ -201,9 +181,8 @@ def show_3d_output(model, attention_layer_num: int=0, input: str="Hello, how are
        Return:
          3D graphic of an attention matrix."""
     inputs = tokenizer(input, return_tensors="pt")
-    outputs = model(**inputs)
 
-    attentions = torch.stack(outputs.attentions)
+    attentions = torch.stack([get_layer_output(model, layer, inputs)])
 
     # averaging by heads
     attention = attentions[attention_layer_num][0].mean(axis=0).detach().numpy()
@@ -211,6 +190,7 @@ def show_3d_output(model, attention_layer_num: int=0, input: str="Hello, how are
     tokens = tokenizer.convert_ids_to_tokens(inputs["input_ids"][0])
 
     return go.Figure(data=[go.Surface(z=attention, x=tokens, y=tokens)])
+
 
 def get_layer_output(model, layer, input):
     activations = {}
@@ -220,7 +200,10 @@ def get_layer_output(model, layer, input):
 
     get_layer(model, layer).register_forward_hook(hook_fn)
 
-    output = model(input)
+    if isinstance(input, transformers.tokenization_utils_base.BatchEncoding):
+        output = model(**input)
+    else:
+        output = model(input)
     return activations.get("output", None)
 
 def get_embeddings(model, layer, input, labels=None):
