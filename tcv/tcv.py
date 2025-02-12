@@ -1,6 +1,5 @@
 import torch
 from torch.autograd import Variable
-from collections import namedtuple
 from transformers import AutoTokenizer
 import transformers
 
@@ -8,28 +7,8 @@ import networkx as nx
 import plotly.graph_objects as go
 from dash import Dash, dcc, html, Output, Input
 
-from sklearn.decomposition import PCA
-from sklearn.manifold import TSNE
-
-from sklearn.cluster import KMeans
-from sklearn.preprocessing import StandardScaler
-
-import numpy as np
-
 from .utils import *
 
-Node = namedtuple('Node', ('name', 'inputs', 'attr', 'op'))
-SAVED_PREFIX = "_saved_"
-
-@dataclass
-class Node:
-    """Dataclass for representing node structure"""
-    name: str
-    size: str
-    obj: nn.Module
-
-    def __str__(self):
-        return self.name + self.size if self.size is not None else f"fn={self.name}"
 
 def build_graph(var: torch.Tensor, params: dict | None=None, show_saved: bool | None=False):
     """Args:
@@ -141,25 +120,42 @@ def build_graph(var: torch.Tensor, params: dict | None=None, show_saved: bool | 
 
     return obj_by_id, edges
 
-def show_layer(model: nn, path: str):
-    """Args:
-         model: neural network model.
-         path: path for extracting weights in format layer1.layer2. ... .layerN.
-       Return:
-         Graphic of a weight matrix."""
+
+def show_layer(model: nn, path: str) -> go.Figure:
+    """
+    Displays the weight distribution of the specified layer in a neural network.
+
+    Args:
+        model (torch.nn): The neural network from which to extract weights.
+        path (str): The path to the layer in the format 'layer1.layer2...layerN'.
+
+    Returns:
+        Graphic: A graphical representation of the weight matrix of the specified layer.
+    """
     weight = get_weight(model, path)
     return show_tensor(weight)
 
-def show_output(model: nn, layer: str, attention_layer_num: int=0, input: str="Hello, how are you?", tokenizer=AutoTokenizer.from_pretrained("bert-base-uncased")):
-    """Args:
-         model: neural network model.
-         layer: layer with attention.
-         attention_layer_num: number of attention layer.
-         input: input text for testing.
-         tokenizer: current model tokenizer.
-       Return:
-         Graphic of an attention matrix."""
-    inputs = tokenizer(input, return_tensors="pt")
+
+def show_output(model: nn, layer: str, attention_layer_num: int=0, input_: str="", tokenizer=None) -> go.Figure:
+    """
+    Displays a heatmap of the attention matrix for a specified layer in the model.
+
+    Args:
+        model (torch.nn): The neural network model from which to extract attention data.
+        layer (str): The name of the layer containing the attention mechanism.
+        attention_layer_num (int, optional): The index of the attention layer to visualize. Defaults to 0.
+        input_ (str, optional): The input text for testing the model. Defaults to "Hello, how are you?".
+        tokenizer: The tokenizer associated with the model. Defaults to the BERT tokenizer.
+
+    Returns:
+        go.Figure: A graphical representation (heatmap) of the attention matrix.
+    """
+    if input_ == "":
+        input_ = "Hello, how are you?"
+    if not tokenizer:
+        tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+
+    inputs = tokenizer(input_, return_tensors="pt")
 
     attentions = torch.stack([get_layer_output(model, layer, inputs)])
 
@@ -170,15 +166,27 @@ def show_output(model: nn, layer: str, attention_layer_num: int=0, input: str="H
 
     return go.Figure(data=go.Heatmap(z=attention, x=tokens, y=tokens, colorscale='Viridis'))
 
-def show_3d_output(model: nn, layer: str, attention_layer_num: int=0, input: str="Hello, how are you?", tokenizer=AutoTokenizer.from_pretrained("bert-base-uncased")):
-    """Args:
-         model: neural network model.
-         attention_layer_num: number of attention layer.
-         input: input text for testing.
-         tokenizer: current model tokenizer.
-       Return:
-         3D graphic of an attention matrix."""
-    inputs = tokenizer(input, return_tensors="pt")
+
+def show_3d_output(model: nn, layer: str, attention_layer_num: int=0, input_: str="", tokenizer=None) -> go.Figure:
+    """
+    Displays a 3D surface plot of the attention matrix for a specified layer in the model.
+
+    Args:
+        model (nn.Module): The neural network model from which to extract attention data.
+        layer (str): The name of the layer containing the attention mechanism.
+        attention_layer_num (int, optional): The index of the attention layer to visualize. Defaults to 0.
+        input_ (str, optional): The input text for testing the model. Defaults to "Hello, how are you?".
+        tokenizer: The tokenizer associated with the model. Defaults to the BERT tokenizer.
+
+    Returns:
+        go.Figure: A 3D graphical representation of the attention matrix.
+    """
+    if input_ == "":
+        input_ = "Hello, how are you?"
+    if not tokenizer:
+        tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+
+    inputs = tokenizer(input_, return_tensors="pt")
 
     attentions = torch.stack([get_layer_output(model, layer, inputs)])
 
@@ -190,7 +198,18 @@ def show_3d_output(model: nn, layer: str, attention_layer_num: int=0, input: str
     return go.Figure(data=[go.Surface(z=attention, x=tokens, y=tokens)])
 
 
-def get_layer_output(model, layer, input):
+def get_layer_output(model, layer, input_:transformers.tokenization_utils_base.BatchEncoding):
+    """
+    Retrieves the output of a specified layer in the model by registering a forward hook.
+
+    Args:
+        model (nn.Module): The neural network model from which to extract layer output.
+        layer (str): The name of the layer whose output is to be retrieved.
+        input_ (transformers.tokenization_utils_base.BatchEncoding): The input data for the model.
+
+    Returns:
+        torch.Tensor: The output activations from the specified layer.
+    """
     activations = {}
 
     def hook_fn(module, input0, output0):
@@ -198,14 +217,27 @@ def get_layer_output(model, layer, input):
 
     get_layer(model, layer).register_forward_hook(hook_fn)
 
-    if isinstance(input, transformers.tokenization_utils_base.BatchEncoding):
-        output = model(**input)
+    if isinstance(input_, transformers.tokenization_utils_base.BatchEncoding):
+        output = model(**input_)
     else:
-        output = model(input)
+        output = model(input_)
     return activations.get("output", None)
 
-def get_embeddings(model, layer, input, labels=None):
-    embeddings = get_layer_output(model, layer, input)
+
+def get_embeddings(model, layer, input_:transformers.tokenization_utils_base.BatchEncoding, labels=None):
+    """
+    Retrieves and visualizes the embeddings from a specified layer of the model using PCA.
+
+    Args:
+        model (nn.Module): The neural network model from which to extract embeddings.
+        layer (str): The name of the layer whose embeddings are to be retrieved.
+        input_ (transformers.tokenization_utils_base.BatchEncoding): The input data for the model.
+        labels (optional): Optional labels for clustering the embeddings. If None, automatic clustering is performed.
+
+    Returns:
+        go.Figure: A scatter plot visualizing the embeddings in PCA space.
+    """
+    embeddings = get_layer_output(model, layer, input_)
     embeddings = embeddings.detach().numpy()
     embeddings_pca = get_pca(embeddings)
 
@@ -215,6 +247,7 @@ def get_embeddings(model, layer, input, labels=None):
     fig = go.Figure(data=[go.Scatter(x=embeddings_pca[:, 0], y=embeddings_pca[:, 1], mode='markers', marker=dict(color=labels))])
     fig.update_layout(title="Embeddings Visualization", xaxis_title="PCA Component 1", yaxis_title="PCA Component 2")
     return fig
+
 
 def show_graph(mapa: dict, edges: list[tuple[str]], minimize_text=True):
     """
@@ -350,7 +383,30 @@ def show_graph(mapa: dict, edges: list[tuple[str]], minimize_text=True):
 
     app.run_server(debug=False)
 
+
 def distill_graph(dct_, borders, remove_back=False):
+    """
+    Distills a graph representation by removing specified nodes and their connections based on certain criteria.
+
+    This function processes a dictionary of nodes (dct_) and a list of edges (borders) to create a distilled version
+    of the graph. Nodes that are deemed "bad" based on their names or other criteria are removed, along with their
+    associated edges. The function also allows for the option to remove backward connections.
+
+    Args:
+        dct_ (dict): A dictionary where keys are node identifiers and values are node objects containing a 'name' attribute.
+        borders (list): A list of tuples representing edges between nodes, where each tuple contains two node identifiers.
+        remove_back (bool, optional): A flag indicating whether to remove backward connections. Defaults to False.
+
+    Returns:
+        tuple: A tuple containing:
+            - dict: The distilled dictionary of nodes after removal of "bad" nodes.
+            - list: A list of new edges (borders) representing the remaining connections in the graph.
+
+    Notes:
+        - A node is considered "bad" if its name contains certain substrings (e.g., 'grad', 'tback', or 'AddmmBackward0').
+        - The function modifies the input dictionary and edges in place, removing nodes and updating connections accordingly.
+    """
+
 
     def contains_substring(main_string, substrings):
         for substring in substrings:
