@@ -216,11 +216,17 @@ def get_embeddings(model, layer, input, labels=None):
     fig.update_layout(title="Embeddings Visualization", xaxis_title="PCA Component 1", yaxis_title="PCA Component 2")
     return fig
 
-def show_graph(mapa: dict, edges: list[tuple[str]], minimize_text=True):
+def show_graph(mapa: dict, edges: list[tuple[str]], model):
     """
     graph structure plot
     """
-
+    import networkx as nx
+    import plotly.graph_objects as go
+    from dash import Dash, dcc, html, Output, Input
+    from skimage.measure import block_reduce
+    from sklearn.decomposition import PCA
+    def delong_text(text):
+        return "<br>".join([text[i:i+10] for i in range(0, len(text), 10)])
     names = {}
     for i in mapa:
         names[i] = mapa[i].name
@@ -228,12 +234,14 @@ def show_graph(mapa: dict, edges: list[tuple[str]], minimize_text=True):
     G = nx.DiGraph()
     G.add_edges_from(edges)
     queue = []
+    SIZE = 15
     for i in G.nodes:
         if not any(G.successors(i)):
             queue.append((i, 0))
     levels = {}
     biases = {}
     seen_nodes = set()
+    heatmap_size = 0.6
     while queue:
         node, level = queue.pop(0)
         if node not in seen_nodes:
@@ -253,9 +261,8 @@ def show_graph(mapa: dict, edges: list[tuple[str]], minimize_text=True):
     pos = {}
     for level in levels.keys():
         for (bias, node) in enumerate(levels[level]):
-            pos[node] = (1 * bias, -100 * level)
-
-    # Функция для отрисовки DAG
+            pos[node] = (1 * bias, -1 * level)
+    # Функция для отрисовки Structure
     def create_dag_figure(selected_node=None):
         fig = go.Figure()
 
@@ -263,7 +270,7 @@ def show_graph(mapa: dict, edges: list[tuple[str]], minimize_text=True):
         for start, end in G.edges():
             x0, y0 = pos[start]
             x1, y1 = pos[end]
-            y1 -= 0.5
+            # y1 -= heatmap_size // 2
             fig.add_trace(go.Scatter(
                 x=[x0, x1], y=[y0, y1],
                 mode="lines+markers",
@@ -276,34 +283,44 @@ def show_graph(mapa: dict, edges: list[tuple[str]], minimize_text=True):
                 hoverinfo='none',
                 showlegend=False
             ))
-        shapes = []
-        annotations = []
-        node_labels = []
-        for node, (x, y) in pos.items():
-            text_width = len(node) * 0.12
-            rect_x0, rect_x1 = x - text_width, x + text_width
-            rect_y0, rect_y1 = y - 0.5, y + 0.5
 
-            shapes.append(dict(type="rect", x0=rect_x0, x1=rect_x1, y0=rect_y0, y1=rect_y1, line=dict(color="black"),
-                               fillcolor="lightblue"))
-            annotations.append(
-                dict(x=x, y=y, text=node, showarrow=False, font=dict(size=14), xanchor="center", yanchor="middle"))
-
-            node_labels.append(node)
-
-        fig.update_layout(title="",
-                          xaxis=dict(showgrid=False, zeroline=False, visible=False, range=[-1, max(levels.keys()) + 1]),
-                          yaxis=dict(showgrid=False, zeroline=False, visible=False, range=[-len(G.nodes), 1]),
-                          margin=dict(l=0, r=0, t=0, b=0),
+        scale = max(levels.keys())
+        fig.update_layout(title="Structure",
+                          xaxis=dict(showgrid=False, zeroline=False, visible=False, range=[-1, scale + 1]),
+                          yaxis=dict(showgrid=False, zeroline=False, visible=False, range=[-scale, 1]),
+                          margin=dict(l=0, r=0, t=40, b=0),
                           plot_bgcolor='white', clickmode="event")
-        text = [names[node] for node in pos.keys()]
-        if minimize_text:
-            text = [i[:6] for i in text]
+        text = [delong_text(names[node]) for node in pos.keys()]
+
+        # Добавляем heatmap'ы
+        for i in pos:
+            try:
+                data = get_weight(model, names[i]).detach().numpy()
+                if len(data.shape) == 2:
+                    x, y = pos[i]
+                    size_x, size_y = data.shape[0], data.shape[1]
+                    data = block_reduce(data, (size_x // 10, size_y // 10), func=np.max)
+                    size_x, size_y = data.shape[0], data.shape[1]
+                    fig.add_trace(go.Heatmap(
+                        z=data,
+                        x=np.linspace(x - heatmap_size/2, x + heatmap_size/2, size_y),
+                        y=np.linspace(y - heatmap_size/2, y + heatmap_size/2, size_x),
+                        colorscale="Viridis",
+                        name=names[i][-8:],
+                        showscale=False,
+                        hoverinfo='none'
+                    ))
+            except Exception as e:
+                print(e)
+
+        node_labels = list(pos.keys())
+
+        # Добавляем точки(квадратики)
         fig.add_trace(go.Scatter(
             x=[x for x, y in pos.values()],
             y=[y for x, y in pos.values()],
-            mode="markers+text",
-            marker=dict(size=40, color="lightblue"),
+            mode="markers",
+            marker=dict(size=50, color="rgba(0, 0, 0, 0.1)"),
             text=text,
             textposition="middle center",
             customdata=node_labels,
@@ -311,30 +328,27 @@ def show_graph(mapa: dict, edges: list[tuple[str]], minimize_text=True):
             marker_symbol="square",
             showlegend=False
         ))
-        fig.update_layout(xaxis=dict(autorange=True), yaxis=dict(autorange=True))
-
         return fig
 
     def create_right_figure(selected_node=None):
         fig = go.Figure()
-        if selected_node:
-            fig.add_trace(go.Scatter(
-                x=[0], y=[0], text=[mapa[selected_node]], mode="text",
-                textfont=dict(size=15, color="black")
-            ))
-
         fig.update_layout(title="Выбранная вершина", xaxis=dict(visible=False), yaxis=dict(visible=False),
                           plot_bgcolor='white')
-
+        if selected_node:
+            fig = show_layer(model, names[selected_node])
+            fig.update_layout(margin=dict(l=0, r=0, t=40, b=0))
+            fig.update_layout(title=names[selected_node])
+            return fig
+        fig.update_layout(margin=dict(l=0, r=0, t=40, b=0))
         return fig
 
     app.layout = html.Div([
         html.Div([
             dcc.Graph(id="dag-graph", figure=create_dag_figure(), style={"height": "90vh"})
-        ], style={"width": "100%", "display": "inline-block", "verticalAlign": "top"}),
+        ], style={"width": "60%", "display": "inline-block", "verticalAlign": "top"}),
         html.Div([
             dcc.Graph(id="right-graph", figure=create_right_figure(), style={"height": "90vh"})
-        ], style={"width": "0%", "display": "inline-block", "verticalAlign": "top"})
+        ], style={"width": "40%", "display": "inline-block", "verticalAlign": "top"})
     ])
 
     @app.callback(
@@ -343,14 +357,13 @@ def show_graph(mapa: dict, edges: list[tuple[str]], minimize_text=True):
     )
     def update_right_graph(clickData):
         # print(clickData)
-        if clickData and "customdata" in clickData["points"][0]:
-            selected_node = clickData["points"][0]["customdata"]
-            return create_right_figure(selected_node)
+        if clickData and 'customdata' in clickData['points'][0]:
+            print(clickData['points'][0]['customdata'])
+            return create_right_figure(clickData['points'][0]['customdata'])
         return create_right_figure()
-
     app.run_server(debug=False)
 
-def distill_graph(dct_, borders, remove_back=False):
+def distill_graph(dct_, borders, remove_back=True):
 
     def contains_substring(main_string, substrings):
         for substring in substrings:
@@ -361,6 +374,12 @@ def distill_graph(dct_, borders, remove_back=False):
     def is_bad(id):
         return contains_substring(dct[id].name.lower(), ['grad', 'tback'])
 
+    if not remove_back:
+        def is_bad2(id):
+            return contains_substring(dct[id].name, ['AddmmBackward0'])
+    else:
+        def is_bad2(id):
+            return contains_substring(dct[id].name, ['Backward'])
     if not remove_back:
         def is_bad2(id):
             return contains_substring(dct[id].name, ['AddmmBackward0'])
