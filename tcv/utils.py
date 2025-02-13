@@ -32,11 +32,11 @@ def get_weight(model: nn, path: str):
     """
     Extracts the weight matrix from a specified layer of the neural network model.
 
-    Args:
+    :params:
         model (nn.Module): The neural network model from which to extract weights.
         path (str): The path to the layer in the format 'layer1.layer2...layerN'.
 
-    Returns:
+    :returns:
         torch.Tensor: The weight matrix of the specified layer.
     """
     layer = get_layer(model, path)
@@ -46,11 +46,11 @@ def get_bias(model: nn, path: str):
     """
     Extracts the bias matrix from a specified layer of the neural network model.
 
-    Args:
+    :params:
         model (nn.Module): The neural network model from which to extract biases.
         path (str): The path to the layer in the format 'layer1.layer2...layerN'.
 
-    Returns:
+    :returns:
         torch.Tensor: The bias matrix of the specified layer.
     """
     layer = get_layer(model, path)
@@ -60,15 +60,12 @@ def get_layer(model: nn, path: str):
     """
     Retrieves a specific layer from the neural network model based on the provided path.
 
-    Args:
+    :params:
         model (nn.Module): The neural network model from which to retrieve the layer.
         path (str): The path to the layer in the format 'layer1.layer2...layerN'.
 
-    Returns:
+    :returns:
         nn.Module: The specified layer of the model.
-
-    Raises:
-        AssertionError: If the path is invalid or if the specified index is out of range.
     """
     parts = path.split(".")
     layer = model
@@ -87,11 +84,11 @@ def show_tensor(matrix, bins=100):
     """
     Displays a histogram of the distribution of values in the given matrix.
 
-    Args:
+    :params:
         matrix (torch.Tensor): The matrix for which to represent the distribution.
         bins (int, optional): The number of bins for the histogram. Defaults to 100.
 
-    Returns:
+    :returns:
         go.Figure: A Plotly figure object representing the distribution of matrix values.
     """
     pca = PCA(n_components=1, svd_solver='arpack')
@@ -113,10 +110,10 @@ def auto_cluster(x):
     """
     Automatically clusters the input data using KMeans clustering.
 
-    Args:
+    :params:
         x (np.ndarray): The input data to be clustered.
 
-    Returns:
+    :returns:
         np.ndarray: An array of cluster labels assigned to each data point.
     """
     num_clusters = max(2, int(np.sqrt(len(x))))
@@ -127,10 +124,10 @@ def get_pca(x):
     """
     Performs PCA on the input data to reduce its dimensionality to 2 components.
 
-    Args:
+    :params:
         x (np.ndarray): The input data to be transformed.
 
-    Returns:
+    :returns:
         np.ndarray: The transformed data in 2D space.
     """
     pca = PCA(n_components=2)

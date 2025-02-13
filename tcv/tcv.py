@@ -10,13 +10,21 @@ from dash import Dash, dcc, html, Output, Input
 from .utils import *
 
 
-def build_graph(var: torch.Tensor, params: dict | None=None, show_saved: bool | None=False):
-    """Args:
-         var: tensor for building graph.
-         params: dict of initial parameters.
-         show_saved: showing saved flag.
-       Returns:
-         Return model structure graph."""
+def build_graph(var: torch.Tensor, params: dict | None=None, show_saved: bool | None=False) -> tuple[dict, list]:
+    """
+    Build a graph representation in format vertexes dict, edges pair list.
+
+    This function constructs a graph representation of a PyTorch tensor and its associated operations,
+    capturing the relationships between tensors and their gradients. The graph is represented as a dictionary
+    of nodes (vertexes) and a list of edges connecting these nodes.
+
+    :params:
+        var: tensor for building graph.
+        params: dict of initial parameters.
+        show_saved: showing saved flag.
+    :returns:
+        Return model structure graph.
+    """
     assert var is not None, "Error: The 'var' variable should not be None"
     # assert isinstance(var, torch.Tensor), "Error: The 'var' variable should be torch.Tensor"
     assert isinstance(params, dict | None), "Error: The 'params' variable should be dict"
@@ -125,11 +133,11 @@ def show_layer(model: nn, path: str) -> go.Figure:
     """
     Displays the weight distribution of the specified layer in a neural network.
 
-    Args:
+    :params:
         model (torch.nn): The neural network from which to extract weights.
         path (str): The path to the layer in the format 'layer1.layer2...layerN'.
 
-    Returns:
+    :returns:
         Graphic: A graphical representation of the weight matrix of the specified layer.
     """
     weight = get_weight(model, path)
@@ -140,14 +148,14 @@ def show_output(model: nn, layer: str, attention_layer_num: int=0, input_: str="
     """
     Displays a heatmap of the attention matrix for a specified layer in the model.
 
-    Args:
+    :params:
         model (torch.nn): The neural network model from which to extract attention data.
         layer (str): The name of the layer containing the attention mechanism.
         attention_layer_num (int, optional): The index of the attention layer to visualize. Defaults to 0.
         input_ (str, optional): The input text for testing the model. Defaults to "Hello, how are you?".
         tokenizer: The tokenizer associated with the model. Defaults to the BERT tokenizer.
 
-    Returns:
+    :returns:
         go.Figure: A graphical representation (heatmap) of the attention matrix.
     """
     if input_ == "":
@@ -171,14 +179,14 @@ def show_3d_output(model: nn, layer: str, attention_layer_num: int=0, input_: st
     """
     Displays a 3D surface plot of the attention matrix for a specified layer in the model.
 
-    Args:
+    :params:
         model (nn.Module): The neural network model from which to extract attention data.
         layer (str): The name of the layer containing the attention mechanism.
         attention_layer_num (int, optional): The index of the attention layer to visualize. Defaults to 0.
         input_ (str, optional): The input text for testing the model. Defaults to "Hello, how are you?".
         tokenizer: The tokenizer associated with the model. Defaults to the BERT tokenizer.
 
-    Returns:
+    :returns:
         go.Figure: A 3D graphical representation of the attention matrix.
     """
     if input_ == "":
@@ -198,16 +206,16 @@ def show_3d_output(model: nn, layer: str, attention_layer_num: int=0, input_: st
     return go.Figure(data=[go.Surface(z=attention, x=tokens, y=tokens)])
 
 
-def get_layer_output(model, layer, input_:transformers.tokenization_utils_base.BatchEncoding):
+def get_layer_output(model: nn, layer: str, input_:transformers.tokenization_utils_base.BatchEncoding):
     """
     Retrieves the output of a specified layer in the model by registering a forward hook.
 
-    Args:
+    :params:
         model (nn.Module): The neural network model from which to extract layer output.
         layer (str): The name of the layer whose output is to be retrieved.
         input_ (transformers.tokenization_utils_base.BatchEncoding): The input data for the model.
 
-    Returns:
+    :returns:
         torch.Tensor: The output activations from the specified layer.
     """
     activations = {}
@@ -228,13 +236,13 @@ def get_embeddings(model, layer, input_:transformers.tokenization_utils_base.Bat
     """
     Retrieves and visualizes the embeddings from a specified layer of the model using PCA.
 
-    Args:
+    :params:
         model (nn.Module): The neural network model from which to extract embeddings.
         layer (str): The name of the layer whose embeddings are to be retrieved.
         input_ (transformers.tokenization_utils_base.BatchEncoding): The input data for the model.
         labels (optional): Optional labels for clustering the embeddings. If None, automatic clustering is performed.
 
-    Returns:
+    :returns:
         go.Figure: A scatter plot visualizing the embeddings in PCA space.
     """
     embeddings = get_layer_output(model, layer, input_)
@@ -249,9 +257,29 @@ def get_embeddings(model, layer, input_:transformers.tokenization_utils_base.Bat
     return fig
 
 
-def show_graph(mapa: dict, edges: list[tuple[str]], minimize_text=True):
+def show_graph(mapa: dict, edges: list[tuple[str]], minimize_text:bool=True):
     """
-    graph structure plot
+    Visualizes a directed acyclic graph (DAG) using the Dash framework.
+
+    This function takes a mapping of node identifiers to their corresponding names and a list of edges,
+    constructs a directed graph, and displays it in a web application. The graph is rendered with nodes
+    represented as squares and edges as arrows. Clicking on a node will display additional information
+    about that node in a separate graph area.
+
+    :params:
+        mapa (dict): A dictionary where keys are node identifiers (strings) and values are objects that have a
+                    'name' attribute. This mapping is used to label the nodes in the graph.
+        edges (list[tuple[str]]): A list of tuples representing directed edges between nodes. Each tuple contains two strings, where the first
+                     element is the source node and the second element is the target node.
+        minimize_text (bool)
+
+    :returns:
+        None: The function runs a Dash web server to display the graph and does not return any value.
+
+    Notes:
+        - The graph is laid out in levels based on the depth of the nodes, with nodes at the same level being
+          horizontally aligned.
+        - The right-hand side of the application displays information about the currently selected node when clicked.
     """
 
     names = {}
@@ -384,7 +412,7 @@ def show_graph(mapa: dict, edges: list[tuple[str]], minimize_text=True):
     app.run_server(debug=False)
 
 
-def distill_graph(dct_, borders, remove_back=False):
+def distill_graph(mapa: dict, edges: list[tuple[str]], remove_back:bool=False) -> tuple[dict, list]:
     """
     Distills a graph representation by removing specified nodes and their connections based on certain criteria.
 
@@ -392,17 +420,19 @@ def distill_graph(dct_, borders, remove_back=False):
     of the graph. Nodes that are deemed "bad" based on their names or other criteria are removed, along with their
     associated edges. The function also allows for the option to remove backward connections.
 
-    Args:
-        dct_ (dict): A dictionary where keys are node identifiers and values are node objects containing a 'name' attribute.
-        borders (list): A list of tuples representing edges between nodes, where each tuple contains two node identifiers.
+    :params:
+        mapa (dict): A dictionary where keys are node identifiers (strings) and values are objects that have a
+                    'name' attribute. This mapping is used to label the nodes in the graph.
+        edges (list[tuple[str]]): A list of tuples representing directed edges between nodes. Each tuple contains two strings, where the first
+                     element is the source node and the second element is the target node.
         remove_back (bool, optional): A flag indicating whether to remove backward connections. Defaults to False.
 
-    Returns:
+    :returns:
         tuple: A tuple containing:
             - dict: The distilled dictionary of nodes after removal of "bad" nodes.
             - list: A list of new edges (borders) representing the remaining connections in the graph.
 
-    Notes:
+    :notes:
         - A node is considered "bad" if its name contains certain substrings (e.g., 'grad', 'tback', or 'AddmmBackward0').
         - The function modifies the input dictionary and edges in place, removing nodes and updating connections accordingly.
     """
@@ -415,29 +445,29 @@ def distill_graph(dct_, borders, remove_back=False):
         return False
 
     def is_bad(id):
-        return contains_substring(dct[id].name.lower(), ['grad', 'tback'])
+        return contains_substring(new_mapa[id].name.lower(), ['grad', 'tback'])
 
     if not remove_back:
         def is_bad2(id):
-            return contains_substring(dct[id].name, ['AddmmBackward0'])
+            return contains_substring(new_mapa[id].name, ['AddmmBackward0'])
     else:
         def is_bad2(id):
-            return contains_substring(dct[id].name, ['Backward'])
+            return contains_substring(new_mapa[id].name, ['Backward'])
 
     graph = dict()
     inv_graph = dict()
-    dct = dct_.copy()
+    new_mapa = mapa.copy()
 
-    for key, val in dct.items():
+    for key, val in new_mapa.items():
         graph[key] = set()
         inv_graph[key] = set()
 
-    for a, b in borders:
+    for a, b in edges:
         graph[a].add(b)
         inv_graph[b].add(a)
 
     def delete_v(vertex):
-        #print("del", dct[vertex].name)
+        #print("del", new_mapa[vertex].name)
         children = graph[vertex]
         parents = inv_graph[vertex]
 
@@ -451,36 +481,36 @@ def distill_graph(dct_, borders, remove_back=False):
 
         del graph[vertex]
         del inv_graph[vertex]
-        del dct[vertex]
+        del new_mapa[vertex]
 
-    for vertex, node in dct_.items():
+    for vertex, node in mapa.items():
         if is_bad(vertex):
             delete_v(vertex)
 
-    for vertex, node in dct_.items():
+    for vertex, node in mapa.items():
         if (node.name.endswith(".weight")):
             base = node.name[:-7]
             #print(base)
             parents_saved = graph[vertex]
             for parent in parents_saved:
                 #print(parent)
-                dct[parent].name = base
+                new_mapa[parent].name = base
                 childs_saved = inv_graph[parent].copy()
                 for child in childs_saved:
-                    #print("child", dct[child].name)
-                    if base in dct[child].name:
+                    #print("child", new_mapa[child].name)
+                    if base in new_mapa[child].name:
                         delete_v(child)
 
-    keys = list(dct.keys()).copy()
+    keys = list(new_mapa.keys()).copy()
     for vertex in keys:
         if is_bad2(vertex):
             delete_v(vertex)
 
 
-    new_borders = []
+    new_edges = []
     for vertex, childs in graph.items():
         for child in childs:
-            new_borders.append((vertex, child))
+            new_edges.append((vertex, child))
 
-    return dct, new_borders
+    return new_mapa, new_edges
 
