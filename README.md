@@ -2,12 +2,6 @@
 
 The `tcv` library is designed for visualizing data, particularly in the context of neural networks and PyTorch tensors. It provides a set of functions to build graphs, visualize layer weights, attention matrices, and embeddings, as well as to display directed acyclic graphs (DAGs) using the Dash framework.
 
-## Installation
-
-To install the `tcv` library, you can use pip:
-
-`pip install tcv`
-
 ## Modules
 
 The library consists of two main modules:
