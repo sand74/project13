@@ -10,7 +10,7 @@ from dash import Dash, dcc, html, Output, Input
 from .utils import *
 
 
-def build_graph(var: torch.Tensor, params: dict | None=None, show_saved: bool | None=False) -> tuple[dict, list]:
+def build_graph(var: torch.Tensor, params: dict | None=None, show_saved: bool | None=False, distill: bool | None=False) -> tuple[dict, list]:
     """
     Build a graph representation in format vertexes dict, edges pair list.
 
@@ -29,6 +29,7 @@ def build_graph(var: torch.Tensor, params: dict | None=None, show_saved: bool | 
     # assert isinstance(var, torch.Tensor), "Error: The 'var' variable should be torch.Tensor"
     assert isinstance(params, dict | None), "Error: The 'params' variable should be dict"
     assert isinstance(show_saved, bool | None), "Error: The 'show_saved' variable should be bool"
+    assert isinstance(distill, bool | None), "Error: The 'distill' variable should be bool"
 
     if params is not None:
         assert all(isinstance(p, Variable) for p in params.values())
@@ -126,6 +127,8 @@ def build_graph(var: torch.Tensor, params: dict | None=None, show_saved: bool | 
     else:
         add_base_tensor(var)
 
+    if distill:
+        return distill_graph(obj_by_id, edges, True)
     return obj_by_id, edges
 
 
