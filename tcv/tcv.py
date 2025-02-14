@@ -339,7 +339,7 @@ def show_graph(mapa: dict, edges: list[tuple[str]], model):
         # Добавляем heatmap'ы
         for i in pos:
             try:
-                data = tcv.get_weight(model, names[i]).detach().numpy()
+                data = get_weight(model, names[i]).detach().numpy()
                 if len(data.shape) == 2:
                     x, y = pos[i]
                     size_x, size_y = data.shape[0], data.shape[1]
@@ -382,7 +382,7 @@ def show_graph(mapa: dict, edges: list[tuple[str]], model):
             fig.update_layout(margin=dict(l=0, r=0, t=40, b=0))
             fig.update_layout(title=names[selected_node], margin=dict(l=0, r=0, t=40, b=0))
             try:
-                fig = tcv.show_layer(model, names[selected_node])
+                fig = show_layer(model, names[selected_node])
                 fig.update_layout(title=names[selected_node])
                 return fig
             except Exception as e:
