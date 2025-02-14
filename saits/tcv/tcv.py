@@ -4,6 +4,7 @@ from transformers import AutoTokenizer
 import transformers
 
 import networkx as nx
+import plotly.express as px
 import plotly.graph_objects as go
 from dash import Dash, dcc, html, Output, Input
 
@@ -251,13 +252,9 @@ def get_embeddings(model, layer, input_:transformers.tokenization_utils_base.Bat
     embeddings = get_layer_output(model, layer, input_)
     embeddings = embeddings.detach().numpy()
     embeddings_pca = get_pca(embeddings)
-
     if labels is None:
         labels = auto_cluster(embeddings_pca)
-
-    fig = go.Figure(data=[go.Scatter(x=embeddings_pca[:, 0], y=embeddings_pca[:, 1], mode='markers', marker=dict(color=labels))])
-    fig.update_layout(title="Embeddings Visualization", xaxis_title="PCA Component 1", yaxis_title="PCA Component 2")
-    return fig
+    return px.scatter(x=embeddings_pca[:, 0], y=embeddings_pca[:, 1], title="Embeddings visualization", color=labels)
 
 
 def show_graph(mapa: dict, edges: list[tuple[str]], model):
