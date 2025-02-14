@@ -379,8 +379,8 @@ def show_graph(mapa: dict, edges: list[tuple[str]], model):
         fig.update_layout(title="Выбранная вершина", xaxis=dict(visible=False), yaxis=dict(visible=False),
                           plot_bgcolor='white')
         if selected_node:
-			fig.update_layout(margin=dict(l=0, r=0, t=40, b=0))
-			fig.update_layout(title=names[selected_node], margin=dict(l=0, r=0, t=40, b=0))
+            fig.update_layout(margin=dict(l=0, r=0, t=40, b=0))
+            fig.update_layout(title=names[selected_node], margin=dict(l=0, r=0, t=40, b=0))
             try:
                 fig = tcv.show_layer(model, names[selected_node])
                 fig.update_layout(title=names[selected_node])
